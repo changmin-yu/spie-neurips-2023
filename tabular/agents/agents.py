@@ -104,7 +104,7 @@ class Sarsa_SR_Relative(Sarsa_SR):
         beta: float, 
         norm_ord: int = 1, 
         full_sr: bool = False, 
-        intrinsic_type: str = "both"
+        intrinsic_type: str = "spie", 
     ):
         super().__init__(env, step_size, step_size_sr, gamma, gamma_sr, 
                          epsilon, beta, norm_ord, full_sr)
@@ -120,7 +120,7 @@ class Sarsa_SR_Relative(Sarsa_SR):
             intrinsic_reward = self.sr[s, next_s] - \
                 np.linalg.norm(self.sr[:, next_s], ord=self.norm_ord)
         else:
-            raise NotImplementedError(f"Unsupported intrinsic reward type: \
+            raise ValueError(f"Unsupported intrinsic reward type: \
                 {self.intrinsic_type}")
         
         return self.beta * intrinsic_reward
@@ -218,7 +218,7 @@ class Sarsa_SR_PR(Sarsa_SR):
                 self.pr[:, next_s])
         
 
-class Sarsa_SR_Relative_Entropy(Sarsa_SR):
+class Sarsa_SR_Relative_Entropy(Sarsa_SR_Relative):
     def __init__(
         self, 
         env: MDP, 
@@ -230,12 +230,22 @@ class Sarsa_SR_Relative_Entropy(Sarsa_SR):
         beta: float, 
         norm_ord: int = 1, 
         full_sr: bool = False, 
+        intrinsic_type: str = "spie", 
     ):
         super().__init__(env, step_size, step_size_sr, gamma, gamma_sr, 
-                         epsilon, beta, norm_ord, full_sr)
+                         epsilon, beta, norm_ord, full_sr, intrinsic_type)
     
     def intrinsic_reward(self, s: int, a: int, next_s: int):
-        intrinsic_reward = discrete_entropy(self.sr[s, :]) - \
-            np.linalg.norm(self.sr[:, next_s], ord=self.norm_ord)
+        if self.intrinsic_type == "spie":
+            intrinsic_reward = discrete_entropy(self.sr[s, :]) - \
+                np.linalg.norm(self.sr[:, next_s], ord=self.norm_ord)
+        elif self.intrinsic_type == "prospective":
+            intrinsic_reward = discrete_entropy(self.sr[s, :])
+        elif self.intrinsic_type == "retrospective":
+            intrinsic_reward = -np.linalg.norm(self.sr[:, next_s], 
+                                               ord=self.norm_ord)
+        else:
+            raise ValueError(f"Unsupported intrinsic reward type: \
+                {self.intrinsic_type}")
         
         return self.beta * intrinsic_reward
